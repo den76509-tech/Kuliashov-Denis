@@ -1,0 +1,7 @@
+{
+  "raw_variation": 0.4279946891901945,
+  "log_variation": 0.07965398924946587,
+  "seasonal_diff_std": 17.654699397775524,
+  "log_seasonal_diff_std": 0.061644634653559384,
+  "recommendation": "Use log transform plus seasonal differencing for statistical diagnostics."
+}

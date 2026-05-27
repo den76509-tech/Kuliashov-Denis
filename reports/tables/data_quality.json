@@ -1,0 +1,9 @@
+{
+  "rows": 144,
+  "start": "1949-01-01",
+  "end": "1960-12-01",
+  "missing_values": 0,
+  "duplicate_timestamps": 0,
+  "missing_timestamps": [],
+  "freq": "MS"
+}

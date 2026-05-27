@@ -1,0 +1,15 @@
+category,model,mode,key_parameters,rationale
+baseline,Naive,manual,last observed value,Минимальный контроль качества прогноза
+baseline,SeasonalNaive,manual,season_length=12,Сильный сезонный бейзлайн для месячного ряда
+baseline,HistoricAverage,manual,mean(train),Проверяет пользу тренда и сезонности
+statistical,ARIMA,manual,"order=(0,1,1), seasonal_order=(0,1,1), season_length=12",Ручная сезонная ARIMA после EDA нестационарности
+statistical,AutoARIMA,auto,season_length=12,Автоподбор порядков ARIMA по информационному критерию
+statistical,AutoETS,auto,season_length=12,Автоподбор тренда и сезонности экспоненциального сглаживания
+statistical,Theta,manual,season_length=12,Компактная трендовая модель для короткого ряда
+statistical,AutoTheta,auto,season_length=12,Автоматический выбор варианта Theta
+ml,Ridge,manual,"lags=1,2,3,6,12,24; rolling means; date features",Интерпретируемый регуляризованный ML-бейзлайн
+ml,RandomForest,manual,"n_estimators=500, max_depth=6",Нелинейная модель с контролем переобучения на коротком ряде
+ml,LightGBM,manual,"n_estimators=300, learning_rate=0.03, num_leaves=15",Сильный табличный бустинг для лаговых признаков
+dl,MLP,manual,"h=24, input_size=24, max_steps=500",Нейросетевой бейзлайн на лаговом окне
+dl,NBEATS,manual,"h=24, input_size=24, max_steps=500",DL-модель для трендово-сезонных временных рядов
+dl,NHITS,manual,"h=24, input_size=24, max_steps=500",Иерархическая DL-модель для длинного горизонта

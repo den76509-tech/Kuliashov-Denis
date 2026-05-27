@@ -1,0 +1,4 @@
+method,key_parameters,rationale,action
+seasonal_diff_zscore,"diff_12, threshold=3.0",Убирает годовую сезонность и ищет резкие год-к-году отклонения,Использовать как быстрый статистический флаг
+monthly_robust_iqr,"month groups, multiplier=1.5",Сравнивает месяцы только с одноименными месяцами прошлых лет,Не удалять автоматически; проверять предметно
+isolation_forest,"contamination=0.03, features=y/month/log_y/diff_12",Нелинейный data-driven поиск редких точек,Использовать как дополнительный сигнал

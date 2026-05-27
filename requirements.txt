@@ -1,0 +1,16 @@
+pandas>=2.2
+numpy>=1.26
+matplotlib>=3.8
+seaborn>=0.13
+scipy>=1.11
+statsmodels>=0.14
+scikit-learn>=1.4
+statsforecast>=1.7
+mlforecast>=0.13
+neuralforecast>=1.7
+lightgbm>=4.3
+xgboost>=2.0
+torch>=2.2
+jupyter>=1.0
+nbformat>=5.9
+tqdm>=4.66
