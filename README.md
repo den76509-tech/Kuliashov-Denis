@@ -49,6 +49,12 @@
 
 Интерпретация: ряд нестационарен по среднему и дисперсии. Для статистических моделей оправданы сезонное дифференцирование и/или мультипликативная сезонность. Для ML/DL нужны лаги `1, 2, 3, 6, 12, 24`, календарные признаки и скользящие средние.
 
+![Ежемесячный временной ряд AirPassengers](reports/figures/01_monthly_series.png)
+
+![Средний пассажиропоток по месяцам](reports/figures/02_monthly_seasonality.png)
+
+![12-месячное скользящее среднее](reports/figures/03_trend_rolling.png)
+
 ## 4. Анализ аномалий
 
 Аномалии исследуются тремя методами:
@@ -60,6 +66,8 @@
 | IsolationForest | `contamination=0.03` | Нелинейный data-driven метод по уровню, месяцу, `log_y` и сезонной разности |
 
 Для данного ряда сильных предметных аномалий обычно не ожидается: экстремальные значения в июле-августе объясняются сезонностью, а не ошибками данных. Поэтому финальная стратегия - не удалять точки автоматически, а использовать флаги аномалий как диагностические признаки.
+
+![Флаги аномалий](reports/figures/04_anomalies.png)
 
 ## 5. Сравнение методов прогнозирования
 
@@ -105,7 +113,31 @@ ML-подход проверяет, достаточно ли лаговых и 
 
 DL-модели включены для выполнения data-driven части задания. Для одного короткого ряда они должны сравниваться особенно осторожно: качество оценивается не только по метрикам, но и по стабильности при повторных запусках.
 
-## 6. Пайплайн
+## 6. Результаты тестирования моделей
+
+Тестирование выполнено на holdout-выборке: последние 24 месяца ряда. Основная метрика ранжирования - `sMAPE`, дополнительно контролируются `MAE`, `RMSE`, `MAPE` и `MASE`.
+
+| Категория | Модель | MAE | RMSE | MAPE | sMAPE | MASE |
+|---|---|---:|---:|---:|---:|---:|
+| DL | MLP | 24.46 | 29.91 | 5.29 | 5.23 | 0.86 |
+| ML | RandomForest | 40.57 | 53.37 | 8.40 | 8.99 | 1.42 |
+| DL | NBEATS | 38.27 | 42.43 | 8.69 | 9.19 | 1.34 |
+| DL | NHITS | 38.90 | 42.89 | 8.98 | 9.52 | 1.36 |
+| ML | Ridge | 41.11 | 45.91 | 9.28 | 9.86 | 1.44 |
+| Statistical | AutoTheta | 51.20 | 58.67 | 10.75 | 11.49 | 1.79 |
+| ML | LightGBM | 60.64 | 80.28 | 12.12 | 13.27 | 2.12 |
+| Statistical | Theta | 62.34 | 70.56 | 13.15 | 14.25 | 2.18 |
+| Statistical | AutoETS | 67.94 | 78.37 | 14.30 | 15.69 | 2.38 |
+| Statistical | ARIMA | 66.34 | 71.89 | 14.42 | 15.70 | 2.32 |
+| Baseline | SeasonalNaive | 71.25 | 76.99 | 15.52 | 17.01 | 2.49 |
+
+По текущему прогону лучший результат показала модель `MLP`: она лучше сезонного бейзлайна по всем метрикам. При этом из-за малого размера ряда финальный вывод не должен опираться только на один запуск DL-модели; для надежного выбора модель стоит дополнительно проверять rolling backtesting и повторными запусками с разными random seed.
+
+![Сравнение моделей по sMAPE](reports/figures/05_model_comparison.png)
+
+![Пример прогноза на holdout](reports/figures/06_holdout_forecast.png)
+
+## 7. Пайплайн
 
 Пайплайн состоит из этапов:
 
@@ -135,7 +167,41 @@ python -m src.pipeline --mode full
 | `quick` | считает быстрые бейзлайны без тяжелых фреймворков |
 | `full` | запускает `statsforecast`, `mlforecast`, `neuralforecast` и anomaly suite |
 
-## 7. Тестирование пайплайна
+### Структура пайплайна
+
+```mermaid
+flowchart TD
+    A["Raw CSV: data/raw/air_passengers.csv"] --> B["Валидация дат, пропусков и дубликатов"]
+    B --> C["Prepared series: unique_id, ds, y"]
+    C --> D["EDA: тренд, сезонность, стационарность"]
+    D --> E["Train/test split: holdout 24 месяца"]
+    E --> F["Baseline и статистические модели"]
+    E --> G["ML-модели: лаги, rolling features, календарь"]
+    E --> H["DL-модели: MLP, NBEATS, NHITS"]
+    C --> I["Поиск аномалий тремя методами"]
+    F --> J["Метрики: MAE, RMSE, MAPE, sMAPE, MASE"]
+    G --> J
+    H --> J
+    I --> K["reports/tables и reports/figures"]
+    J --> K
+    K --> L["README.md и notebook для сдачи"]
+```
+
+Техническая структура пайплайна:
+
+| Этап | Модуль | Выход |
+|---|---|---|
+| Загрузка и подготовка | `src/data.py` | `data/processed/air_passengers_prepared.csv` |
+| EDA | `src/eda.py` | `reports/tables/eda_*.csv`, `stationarity_notes.json` |
+| Аномалии | `src/anomaly.py` | `reports/tables/anomalies_results.csv` |
+| Статистические модели | `src/models_statistical.py` | `reports/tables/statistical_results.csv` |
+| ML-модели | `src/models_ml.py` | `reports/tables/ml_results.csv` |
+| DL-модели | `src/models_dl.py` | `reports/tables/dl_results.csv` |
+| Метрики | `src/metrics.py` | таблицы качества прогноза |
+| Графики | `src/visualization.py` | `reports/figures/*.png` |
+| Оркестрация | `src/pipeline.py` | режимы `prepare`, `quick`, `full` |
+
+## 8. Тестирование пайплайна
 
 Функциональные проверки:
 
@@ -152,8 +218,51 @@ python -m src.pipeline --mode full
 - `full` зависит от CPU/GPU и установки `torch`; для короткого ряда ожидается интерактивное время выполнения.
 - Для DL ограничено `max_steps=500`, чтобы избежать неоправданно долгого обучения.
 
-## 8. Вывод
+## 9. Вывод
 
-Для ряда AirPassengers основной производственный кандидат - статистическая сезонная модель (`AutoETS` или `AutoARIMA`) с контролем качества против `SeasonalNaive`. ML/DL модели полезны как исследовательские альтернативы, но из-за малого объема данных должны приниматься только при устойчивом выигрыше на backtesting и нормальной диагностике остатков.
+Для ряда AirPassengers в текущем holdout-тесте лучший результат показала `MLP`, а сильным практическим ориентиром остается сравнение с `SeasonalNaive` и статистическими сезонными моделями (`AutoTheta`, `AutoETS`, `AutoARIMA`). Из-за малого объема данных DL-модель стоит принимать как финальный выбор только после rolling backtesting, повторных запусков и нормальной диагностики остатков.
 
 Ноутбук с кодом и комментариями: `notebooks/final_timeseries_project.ipynb`.
+
+## 10. Структура репозитория
+
+```text
+Kuliashov-Denis/
+├── README.md
+├── requirements.txt
+├── data/
+│   ├── raw/
+│   │   └── air_passengers.csv
+│   └── processed/
+│       └── air_passengers_prepared.csv
+├── notebooks/
+│   └── final_timeseries_project.ipynb
+├── reports/
+│   ├── figures/
+│   │   ├── 01_monthly_series.png
+│   │   ├── 02_monthly_seasonality.png
+│   │   ├── 03_trend_rolling.png
+│   │   ├── 04_anomalies.png
+│   │   ├── 05_model_comparison.png
+│   │   └── 06_holdout_forecast.png
+│   └── tables/
+│       ├── anomalies_results.csv
+│       ├── anomaly_methods.csv
+│       ├── data_quality.json
+│       ├── dl_results.csv
+│       ├── ml_results.csv
+│       ├── model_selection.csv
+│       ├── quick_baseline_metrics.csv
+│       └── statistical_results.csv
+└── src/
+    ├── anomaly.py
+    ├── config.py
+    ├── data.py
+    ├── eda.py
+    ├── metrics.py
+    ├── models_dl.py
+    ├── models_ml.py
+    ├── models_statistical.py
+    ├── pipeline.py
+    └── visualization.py
+```

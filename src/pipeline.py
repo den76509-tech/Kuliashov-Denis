@@ -24,6 +24,12 @@ def run_prepare() -> dict:
         json.dump(checks, fh, ensure_ascii=False, indent=2)
     with open(REPORT_TABLES_DIR / "stationarity_notes.json", "w", encoding="utf-8") as fh:
         json.dump(stationarity_notes(df), fh, ensure_ascii=False, indent=2)
+    try:
+        from .visualization import generate_report_figures
+
+        generate_report_figures()
+    except ImportError:
+        pass
     return checks
 
 
@@ -69,6 +75,12 @@ def run_full_pipeline() -> dict[str, pd.DataFrame]:
     REPORT_TABLES_DIR.mkdir(parents=True, exist_ok=True)
     for name, table in outputs.items():
         table.to_csv(REPORT_TABLES_DIR / f"{name}_results.csv", index=False)
+    try:
+        from .visualization import generate_report_figures
+
+        generate_report_figures()
+    except ImportError:
+        pass
     return outputs
 
 
